@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Host {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  quizzes       Quiz[]
+
+  @@map("quiz_hosts")
+}
+
+model Quiz {
+  id        String        @id @default(uuid())
+  hostId    String
+  host      Host          @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  title     String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  questions Question[]
+  sessions  GameSession[]
+
+  @@map("quiz_quizzes")
+}
+
+model Question {
+  id           String   @id @default(uuid())
+  quizId       String
+  quiz         Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  order        Int
+  text         String
+  options      String[]
+  correctIndex Int
+  timeLimitSec Int      @default(20)
+  imageUrl     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("quiz_questions")
+}
+
+enum SessionStatus {
+  WAITING
+  ACTIVE
+  FINISHED
+}
+
+model GameSession {
+  id                   String        @id @default(uuid())
+  quizId               String?
+  quiz                 Quiz?         @relation(fields: [quizId], references: [id])
+  roomCode             String        @unique
+  status               SessionStatus @default(WAITING)
+  currentQuestionIndex Int           @default(0)
+  hostSocketId         String?
+  startedAt            DateTime?
+  finishedAt           DateTime?
+  createdAt            DateTime      @default(now())
+  players              Player[]
+
+  @@map("quiz_sessions")
+}
+
+model Player {
+  id         String      @id @default(uuid())
+  sessionId  String
+  session    GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  studentId  String
+  nickname   String
+  socketId   String?
+  totalScore Int         @default(0)
+  joinedAt   DateTime    @default(now())
+  answers    Answer[]
+
+  @@map("quiz_players")
+}
+
+model Answer {
+  id              String   @id @default(uuid())
+  playerId        String
+  player          Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  questionId      String
+  selectedIndex   Int
+  isCorrect       Boolean
+  responseTimeSec Float
+  score           Int
+  answeredAt      DateTime @default(now())
+
+  @@map("quiz_answers")
+}
